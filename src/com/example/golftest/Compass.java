@@ -6,18 +6,17 @@ import android.app.Activity;
 import android.os.Bundle; 
 import android.os.Handler;
 import android.view.Gravity;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 public class Compass extends Activity{ 
 
-	public TextView t;
-	public ImageView arrow;
-	public ImageCompass imageCompass;
-	
+	private TextView t;
+	private ImageCompass imageCompass;
+	private AudioService audioService;
 	private Random random = new Random();
+
 	private final Runnable mUpdateUITimerTask = new Runnable() {
 		public void run() {
 			while(true){
@@ -56,9 +55,13 @@ public class Compass extends Activity{
 		mHandler.post(new Runnable() {
 			@Override
 			public void run() {
-				// This gets executed on the UI thread so it can safely modify Views
-				t.setText(Float.toString(val));
-				imageCompass.setDirection((int)degree);
+				if( audioService != null ) {
+					audioService.doUpdate( System.currentTimeMillis() );
+					// This gets executed on the UI thread so it can safely modify Views
+					t.setText( Float.toString( audioService.peakSpecRead() ) );
+					/* set the degree of the compass */
+					imageCompass.setDirection( (int)degree );
+				}
 			}
 		});
 	}
@@ -100,9 +103,22 @@ public class Compass extends Activity{
 	     */
 	    setContentView(layout);
 	    
+	    /**
+	     * set up the audio service
+	     */
+        audioService = new AudioService();
+	    audioService.measureStart();
 	    /*
 	     * wake up the thread to keep updating values every second
 	     */
 		performOnBackgroundThread(mUpdateUITimerTask);
-	} 
+	}
+	
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if(audioService!=null) {
+        	audioService.onDestroy();
+        }
+    }	
 }
